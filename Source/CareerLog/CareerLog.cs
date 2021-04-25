@@ -218,7 +218,7 @@ namespace RP0
 
         public void AddTechEvent(string nodeName)
         {
-            if (!IsEnabled) return;
+            if (CareerEventScope.ShouldIgnore || !IsEnabled) return;
 
             _techEvents.Add(new TechResearchEvent(KSPUtils.GetUT())
             {
@@ -228,7 +228,7 @@ namespace RP0
 
         public void AddFacilityConstructionEvent(SpaceCenterFacility facility, int newLevel, double cost, ConstructionState state)
         {
-            if (!IsEnabled) return;
+            if (CareerEventScope.ShouldIgnore || !IsEnabled) return;
 
             _facilityConstructions.Add(new FacilityConstructionEvent(KSPUtils.GetUT())
             {
@@ -488,6 +488,8 @@ namespace RP0
 
         private void CurrenciesModified(CurrencyModifierQuery query)
         {
+            if (CareerEventScope.ShouldIgnore) return;
+
             float changeDelta = query.GetTotal(Currency.Funds);
             if (changeDelta != 0f)
             {
@@ -497,6 +499,8 @@ namespace RP0
 
         private void FundsChanged(float changeDelta, TransactionReasons reason)
         {
+            if (CareerEventScope.ShouldIgnore) return;
+
             _prevFundsChangeAmount = changeDelta;
             _prevFundsChangeReason = reason;
 
@@ -543,7 +547,7 @@ namespace RP0
 
         private void ContractAccepted(Contract c)
         {
-            if (c.AutoAccept) return;   // Do not record the Accept event for record contracts
+            if (CareerEventScope.ShouldIgnore || c.AutoAccept) return;   // Do not record the Accept event for record contracts
 
             _contractDict.Add(new ContractEvent(KSPUtils.GetUT())
             {
@@ -557,6 +561,8 @@ namespace RP0
 
         private void ContractCompleted(Contract c)
         {
+            if (CareerEventScope.ShouldIgnore) return;
+
             _contractDict.Add(new ContractEvent(KSPUtils.GetUT())
             {
                 Type = ContractEventType.Complete,
@@ -569,6 +575,8 @@ namespace RP0
 
         private void ContractCancelled(Contract c)
         {
+            if (CareerEventScope.ShouldIgnore) return;
+
             // KSP first takes the contract penalty and then fires the contract events
             double fundsChange = 0;
             if (_prevFundsChangeReason == TransactionReasons.ContractPenalty)
@@ -589,6 +597,8 @@ namespace RP0
 
         private void ContractFailed(Contract c)
         {
+            if (CareerEventScope.ShouldIgnore) return;
+
             string internalName = GetContractInternalName(c);
             double ut = KSPUtils.GetUT();
             if (_contractDict.Any(c2 => c2.UT == ut && c2.InternalName == internalName))
@@ -609,6 +619,8 @@ namespace RP0
 
         private void VesselSituationChange(GameEvents.HostedFromToAction<Vessel, Vessel.Situations> ev)
         {
+            if (CareerEventScope.ShouldIgnore) return;
+
             // KJR can clobber the vessel back to prelaunch state in case of clamp wobble. Need to exclude such events.
             if (!_launched && ev.from == Vessel.Situations.PRELAUNCH && ev.host == FlightGlobals.ActiveVessel)
             {
@@ -663,19 +675,21 @@ namespace RP0
 
         private void OnKctTechCompleted(ProtoTechNode data)
         {
+            if (CareerEventScope.ShouldIgnore) return;
+
             AddTechEvent(data.techID);
         }
 
         private void OnKctFacilityUpgdQueued(FacilityUpgrade data)
         {
-            if (!data.FacilityType.HasValue) return;    // can be null in case of third party mods that define custom facilities
+            if (CareerEventScope.ShouldIgnore || !data.FacilityType.HasValue) return;    // can be null in case of third party mods that define custom facilities
 
             AddFacilityConstructionEvent(data.FacilityType.Value, data.UpgradeLevel, data.Cost, ConstructionState.Started);
         }
 
         private void OnKctFacilityUpgdComplete(FacilityUpgrade data)
         {
-            if (!data.FacilityType.HasValue) return;    // can be null in case of third party mods that define custom facilities
+            if (CareerEventScope.ShouldIgnore || !data.FacilityType.HasValue) return;    // can be null in case of third party mods that define custom facilities
 
             AddFacilityConstructionEvent(data.FacilityType.Value, data.UpgradeLevel, data.Cost, ConstructionState.Completed);
         }
